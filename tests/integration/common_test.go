@@ -3,47 +3,43 @@
 package integration
 
 import (
-	"os"
+	"github.com/spf13/viper"
 )
 
-var (
-	testNamespace = "samba-operator-system"
+type testConfig struct {
+	Namespace     string `mapstructure:"namespace"`
+	FilesDir      string `mapstructure:"files_dir"`
+	ConfigDir     string `mapstructure:"config_dir"`
+	KustomizeCmd  string `mapstructure:"kustomize"`
+	ExpectedImage string `mapstructure:"expected_img"`
+}
 
-	testFilesDir      = "../files"
-	operatorConfigDir = "../../config"
-
-	kustomizeCmd = "kustomize"
-
-	testExpectedImage = "quay.io/samba.org/samba-operator:latest"
-)
+var config testConfig
 
 func init() {
-	ns := os.Getenv("SMBOP_TEST_NAMESPACE")
-	if ns != "" {
-		testNamespace = ns
+	must := func(e error) {
+		if e != nil {
+			panic(e)
+		}
 	}
 
-	fdir := os.Getenv("SMBOP_TEST_FILES_DIR")
-	if fdir != "" {
-		testFilesDir = fdir
-	}
+	v := viper.New()
+	v.SetDefault("namespace", "samba-operator-system")
+	v.SetDefault("files_dir", "../files")
+	v.SetDefault("config_dir", "../../config")
+	v.SetDefault("kustomize", "kustomize")
+	v.SetDefault("expected_img", "quay.io/samba.org/samba-operator:latest")
 
-	cdir := os.Getenv("SMBOP_TEST_CONFIG_DIR")
-	if cdir != "" {
-		operatorConfigDir = cdir
-	}
+	v.SetEnvPrefix("SMBOP_TEST")
+	must(v.BindEnv("namespace"))
+	must(v.BindEnv("files_dir"))
+	must(v.BindEnv("config_dir"))
+	must(v.BindEnv("expected_img"))
+	// kustomize is special so that the env var can be shared among
+	// more programs than just our test suite.
+	// in future versions of viper we can specify multiple env vars
+	// as "aliases"
+	must(v.BindEnv("kustomize", "KUSTOMIZE"))
 
-	km := os.Getenv("SMBOP_TEST_KUSTOMIZE")
-	if km != "" {
-		kustomizeCmd = km
-	}
-	km2 := os.Getenv("KUSTOMIZE")
-	if km == "" && km2 != "" {
-		kustomizeCmd = km2
-	}
-
-	timg := os.Getenv("SMBOP_TEST_EXPECT_MANAGER_IMG")
-	if timg != "" {
-		testExpectedImage = timg
-	}
+	must(v.Unmarshal(&config))
 }

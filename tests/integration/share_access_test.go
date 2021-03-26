@@ -29,15 +29,15 @@ func (s *ShareAccessSuite) SetupSuite() {
 	_, err := tc.CreateFromFileIfMissing(
 		context.TODO(),
 		kube.FileSource{
-			Path:      path.Join(testFilesDir, "data1.yaml"),
-			Namespace: testNamespace,
+			Path:      path.Join(config.FilesDir, "data1.yaml"),
+			Namespace: config.Namespace,
 		})
 	s.Require().NoError(err)
 	_, err = tc.CreateFromFileIfMissing(
 		context.TODO(),
 		kube.FileSource{
-			Path:      path.Join(testFilesDir, "client-test-pod.yaml"),
-			Namespace: testNamespace,
+			Path:      path.Join(config.FilesDir, "client-test-pod.yaml"),
+			Namespace: config.Namespace,
 		})
 	s.Require().NoError(err)
 
@@ -50,21 +50,21 @@ func (s *ShareAccessSuite) SetupSuite() {
 		ctx,
 		kube.NewTestClient(""),
 		"app=samba-operator-test-smbclient",
-		testNamespace),
+		config.Namespace),
 		"smbclient pod does not exist",
 	)
 	s.Require().NoError(kube.WaitForPodReadyByLabel(
 		ctx,
 		kube.NewTestClient(""),
 		"app=samba-operator-test-smbclient",
-		testNamespace),
+		config.Namespace),
 		"smbclient pod not ready",
 	)
 }
 
 // TestLogin verifies that users can log into the share.
 func (s *ShareAccessSuite) TestLogin() {
-	smbclient := smbclient.MustPodClient(testNamespace, s.clientPod)
+	smbclient := smbclient.MustPodClient(config.Namespace, s.clientPod)
 	for _, auth := range s.auths {
 		err := smbclient.Command(
 			context.TODO(),
@@ -76,7 +76,7 @@ func (s *ShareAccessSuite) TestLogin() {
 }
 
 func (s *ShareAccessSuite) TestPutFile() {
-	smbclient := smbclient.MustPodClient(testNamespace, s.clientPod)
+	smbclient := smbclient.MustPodClient(config.Namespace, s.clientPod)
 	auth := s.auths[0]
 	err := smbclient.Command(
 		context.TODO(),

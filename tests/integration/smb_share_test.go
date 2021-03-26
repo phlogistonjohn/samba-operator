@@ -35,7 +35,7 @@ func (s *SmbShareSuite) SetupSuite() {
 			context.TODO(),
 			kube.FileSource{
 				Path:      f,
-				Namespace: testNamespace,
+				Namespace: config.Namespace,
 			},
 		)
 		require.NoError(err)
@@ -50,7 +50,7 @@ func (s *SmbShareSuite) TearDownSuite() {
 			context.TODO(),
 			kube.FileSource{
 				Path:      f,
-				Namespace: testNamespace,
+				Namespace: config.Namespace,
 			},
 		)
 		s.Require().NoError(err)
@@ -66,7 +66,7 @@ func (s *SmbShareSuite) waitForPodExist() error {
 		ctx,
 		s.tc,
 		fmt.Sprintf("samba-operator.samba.org/service=%s", s.smbShareResourceName),
-		testNamespace)
+		config.Namespace)
 }
 
 func (s *SmbShareSuite) waitForPodReady() error {
@@ -78,14 +78,14 @@ func (s *SmbShareSuite) waitForPodReady() error {
 		ctx,
 		s.tc,
 		fmt.Sprintf("samba-operator.samba.org/service=%s", s.smbShareResourceName),
-		testNamespace)
+		config.Namespace)
 }
 
 func (s *SmbShareSuite) getPodIP() (string, error) {
 	pod, err := s.tc.GetPodByLabel(
 		context.TODO(),
 		fmt.Sprintf("samba-operator.samba.org/service=%s", s.smbShareResourceName),
-		testNamespace)
+		config.Namespace)
 	if err != nil {
 		return "", err
 	}
@@ -127,8 +127,8 @@ func allSmbShareSuites() map[string]suite.TestingSuite {
 	m := map[string]suite.TestingSuite{}
 	m["users1"] = &SmbShareSuite{
 		fileSources: []string{
-			path.Join(testFilesDir, "smbsecurityconfig1.yaml"),
-			path.Join(testFilesDir, "smbshare1.yaml"),
+			path.Join(config.FilesDir, "smbsecurityconfig1.yaml"),
+			path.Join(config.FilesDir, "smbshare1.yaml"),
 		},
 		smbShareResourceName: "tshare1",
 		shareName:            "My Share",
@@ -140,8 +140,8 @@ func allSmbShareSuites() map[string]suite.TestingSuite {
 
 	m["domainMember1"] = &SmbShareSuite{
 		fileSources: []string{
-			path.Join(testFilesDir, "smbsecurityconfig2.yaml"),
-			path.Join(testFilesDir, "smbshare2.yaml"),
+			path.Join(config.FilesDir, "smbsecurityconfig2.yaml"),
+			path.Join(config.FilesDir, "smbshare2.yaml"),
 		},
 		smbShareResourceName: "tshare2",
 		shareName:            "My Kingdom",

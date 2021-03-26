@@ -31,7 +31,7 @@ func (s *DeploySuite) SetupSuite() {
 }
 
 func (s DeploySuite) createKustomized(dir string) {
-	cmd := exec.Command(kustomizeCmd, "build", dir)
+	cmd := exec.Command(config.KustomizeCmd, "build", dir)
 	stdout, err := cmd.StdoutPipe()
 	s.Require().NoError(err)
 	err = cmd.Start()
@@ -40,7 +40,7 @@ func (s DeploySuite) createKustomized(dir string) {
 		context.TODO(),
 		kube.DirectSource{
 			Source:    stdout,
-			Namespace: testNamespace,
+			Namespace: config.Namespace,
 		},
 	)
 	s.Require().NoError(err)
@@ -57,13 +57,13 @@ func (s DeploySuite) TestOperatorReady() {
 		ctx,
 		s.tc,
 		fmt.Sprintf("control-plane=controller-manager"),
-		testNamespace)
+		config.Namespace)
 	s.Require().NoError(err)
 	err = kube.WaitForPodReadyByLabel(
 		ctx,
 		s.tc,
 		fmt.Sprintf("control-plane=controller-manager"),
-		testNamespace)
+		config.Namespace)
 	s.Require().NoError(err)
 }
 
@@ -71,11 +71,11 @@ func (s DeploySuite) TestOperatorReady() {
 // image and tag for the deployment is what was specified for the
 // test.
 func (s DeploySuite) TestImageAndTag() {
-	if testExpectedImage == "" {
+	if config.ExpectedImage == "" {
 		s.T().Skip("testExpectedImage variable unset")
 		return
 	}
-	deploy, err := s.tc.Clientset().AppsV1().Deployments(testNamespace).Get(
+	deploy, err := s.tc.Clientset().AppsV1().Deployments(config.Namespace).Get(
 		context.TODO(),
 		"samba-operator-controller-manager",
 		metav1.GetOptions{})
@@ -88,13 +88,13 @@ func (s DeploySuite) TestImageAndTag() {
 			break
 		}
 	}
-	require.Equal(testExpectedImage, ctrImage)
+	require.Equal(config.ExpectedImage, ctrImage)
 }
 
 func allDeploySuites() map[string]suite.TestingSuite {
 	m := map[string]suite.TestingSuite{}
 	m["default"] = &DeploySuite{
-		sharedConfigDir: path.Join(operatorConfigDir, "default"),
+		sharedConfigDir: path.Join(config.ConfigDir, "default"),
 	}
 	return m
 }
