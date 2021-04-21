@@ -36,6 +36,10 @@ import (
 var (
 	scheme   = runtime.NewScheme()
 	setupLog = ctrl.Log.WithName("setup")
+
+	// versioning information baked into the binary
+	Version  = "(unset)"
+	CommitID = "(unset)"
 )
 
 func init() {
@@ -93,7 +97,9 @@ func main() {
 	}
 	// +kubebuilder:scaffold:builder
 
-	setupLog.Info("starting manager")
+	setupLog.Info("starting manager",
+		"Version", Version,
+		"CommitID", CommitID)
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
 		setupLog.Error(err, "problem running manager")
 		os.Exit(1)
