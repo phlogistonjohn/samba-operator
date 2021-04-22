@@ -65,7 +65,7 @@ func (hs HostState) Differs(other HostState) bool {
 	if hs.Reference != other.Reference {
 		return true
 	}
-	if len(hs.Items) != len(hs.Items) {
+	if len(hs.Items) != len(other.Items) {
 		return true
 	}
 	for i := range hs.Items {
