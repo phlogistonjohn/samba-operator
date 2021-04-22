@@ -112,9 +112,9 @@ image-build-buildah: build
 .PHONY: svcwatch-image-build-buildah
 svcwatch-image-build-buildah: svcwatch-build
 	cn=$$(buildah from registry.access.redhat.com/ubi8/ubi-minimal:latest) && \
-	buildah copy $$cn bin/manager /manager && \
+	buildah copy $$cn bin/svcwatch /svcwatch && \
 	buildah config --cmd='[]' $$cn && \
-	buildah config --entrypoint='["/manager"]' $$cn && \
+	buildah config --entrypoint='["/svcwatch"]' $$cn && \
 	buildah commit $$cn quay.io/phlogistonjohn/svcwatch:${TAG}
 
 
