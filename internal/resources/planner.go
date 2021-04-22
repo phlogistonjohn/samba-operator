@@ -18,6 +18,7 @@ package resources
 import (
 	"fmt"
 	"path"
+	"strconv"
 	"strings"
 
 	sambaoperatorv1alpha1 "github.com/samba-in-kubernetes/samba-operator/api/v1alpha1"
@@ -277,11 +278,26 @@ func (sp *sharePlanner) prune() (changed bool, err error) {
 	return
 }
 
-const serviceTypeAnnoKey = "samba-operator.samba.org/demo-service-type"
+const (
+	serviceTypeAnnoKey = "samba-operator.samba.org/demo-service-type"
+	dnsRegisterAnnoKey = "samba-operator.samba.org/demo-dns-register"
+)
 
 func (sp *sharePlanner) serviceType() string {
 	if sp.SmbShare.Annotations[serviceTypeAnnoKey] == "LoadBalancer" {
 		return "LoadBalancer"
 	}
 	return "ClusterIP"
+}
+
+func (sp *sharePlanner) enableDNSRegister() bool {
+	if sp.securityMode() != adMode {
+		return false
+	}
+	v := sp.SmbShare.Annotations[dnsRegisterAnnoKey]
+	if v == "" {
+		return false
+	}
+	b, err := strconv.ParseBool(v)
+	return (err == nil) && b
 }
