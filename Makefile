@@ -53,6 +53,10 @@ build:
 	go build -o bin/manager -ldflags "-X main.Version=$(GIT_VERSION) -X main.CommitID=$(COMMIT_ID)"  main.go
 .PHONY: build
 
+svcwatch-build:
+	go build -o bin/svcwatch ./utilities/svcwatch/main.go
+.PHONY: svcwatch-build
+
 # Run against the configured Kubernetes cluster in ~/.kube/config
 run: generate vet manifests
 	go run ./main.go
@@ -104,6 +108,15 @@ image-build-buildah: build
 	buildah config --cmd='[]' $$cn && \
 	buildah config --entrypoint='["/manager"]' $$cn && \
 	buildah commit $$cn ${IMG}
+
+.PHONY: svcwatch-image-build-buildah
+svcwatch-image-build-buildah: svcwatch-build
+	cn=$$(buildah from registry.access.redhat.com/ubi8/ubi-minimal:latest) && \
+	buildah copy $$cn bin/manager /manager && \
+	buildah config --cmd='[]' $$cn && \
+	buildah config --entrypoint='["/manager"]' $$cn && \
+	buildah commit $$cn quay.io/phlogistonjohn/svcwatch:${TAG}
+
 
 # Push the container image
 docker-push: container-push
