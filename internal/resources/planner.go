@@ -276,3 +276,12 @@ func (sp *sharePlanner) prune() (changed bool, err error) {
 	}
 	return
 }
+
+const serviceTypeAnnoKey = "samba-operator.samba.org/demo-service-type"
+
+func (sp *sharePlanner) serviceType() string {
+	if sp.SmbShare.Annotations[serviceTypeAnnoKey] == "LoadBalancer" {
+		return "LoadBalancer"
+	}
+	return "ClusterIP"
+}

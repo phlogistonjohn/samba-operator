@@ -24,6 +24,14 @@ var svcSelectorKey = "samba-operator.samba.org/service"
 
 func newServiceForSmb(planner *sharePlanner, ns string) *corev1.Service {
 	// as of now we only generate ClusterIP type services
+	stype := corev1.ServiceType(planner.serviceType())
+	switch stype {
+	case corev1.ServiceTypeClusterIP:
+	case corev1.ServiceTypeNodePort:
+	case corev1.ServiceTypeLoadBalancer:
+	default:
+		panic("invalid value for service type")
+	}
 	labels := labelsForSmbServer(planner.instanceName())
 	return &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
@@ -32,7 +40,7 @@ func newServiceForSmb(planner *sharePlanner, ns string) *corev1.Service {
 			Labels:    labels,
 		},
 		Spec: corev1.ServiceSpec{
-			Type: "ClusterIP",
+			Type: stype,
 			Ports: []corev1.ServicePort{{
 				Name:     "smb",
 				Protocol: corev1.ProtocolTCP,
