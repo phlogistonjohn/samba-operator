@@ -94,16 +94,16 @@ func serviceToHostState(svc *corev1.Service, nameLabel string) HostState {
 			n = fmt.Sprintf("%s-%d", name, i)
 		}
 		hs.Items = append(hs.Items, HostInfo{
-			Name: n,
+			Name:        n,
 			IPv4Address: ig.IP,
-			Target: "external",
+			Target:      "external",
 		})
 	}
 	if svc.Spec.ClusterIP != "" {
 		hs.Items = append(hs.Items, HostInfo{
-			Name: fmt.Sprintf("%s-cluster", name),
+			Name:        fmt.Sprintf("%s-cluster", name),
 			IPv4Address: svc.Spec.ClusterIP,
-			Target: "internal",
+			Target:      "internal",
 		})
 	}
 	return hs
@@ -134,23 +134,18 @@ func processUpdates(
 	}
 }
 
-func envConfig(d *string, vn string) {
-	ev := os.Getenv(vn)
-	if ev != "" {
-		*d = ev
-	}
+func envFlag(d *string, label, envKey, help string) {
+	defVal := os.Getenv(envKey)
+	flag.StringVar(
+		d, label, defVal,
+		fmt.Sprintf("%s (default from: %s)", help, envKey))
 }
 
 func main() {
-	envConfig(&destPath, "DESTINATION_PATH")
-	envConfig(&svcLabelKey, "SERVICE_LABEL_KEY")
-	envConfig(&svcLabelValue, "SERVICE_LABEL_VALUE")
-	envConfig(&svcNamespace, "SERVICE_NAMESPACE")
-
-	flag.StringVar(&destPath, "destination", "", "JSON file to update")
-	flag.StringVar(&svcLabelKey, "label-key", "", "Label key to watch")
-	flag.StringVar(&svcLabelValue, "label-value", "", "Label value")
-	flag.StringVar(&svcNamespace, "namespace", "", "Namespace")
+	envFlag(&destPath, "destination", "DESTINATION_PATH", "JSON file to update")
+	envFlag(&svcLabelKey, "label-key", "SERVICE_LABEL_KEY", "Label key to watch")
+	envFlag(&svcLabelValue, "label-value", "SERVICE_LABEL_VALUE", "Label value")
+	envFlag(&svcNamespace, "namespace", "SERVICE_NAMESPACE", "Namespace")
 	flag.Parse()
 
 	l, err := zap.NewDevelopment()
@@ -160,6 +155,14 @@ func main() {
 	}
 
 	kubeconfig := os.Getenv("KUBECONFIG")
+	l.Info("Starting service watcher. Params:",
+		zap.Any("destination path", destPath),
+		zap.Any("label key", svcLabelKey),
+		zap.Any("label value to match", svcLabelValue),
+		zap.Any("svcNamespace", svcNamespace),
+		zap.Any("KUBECONFIG", kubeconfig),
+	)
+
 	kcfg, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
 	if err != nil {
 		l.Error("failed to create watch", zap.Error(err))
