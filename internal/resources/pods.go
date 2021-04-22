@@ -16,6 +16,8 @@ limitations under the License.
 package resources
 
 import (
+	"fmt"
+
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 
@@ -123,6 +125,49 @@ func buildADPodSpec(planner *sharePlanner, cfg *conf.OperatorConfig, pvcName str
 				},
 			},
 		},
+	}
+	if planner.enableDNSRegister() {
+		watchFile := "/var/lib/svcwatch/status.json"
+		watchVol, watchMount := svcWatchVolumeAndMount("/var/lib/svcwatch")
+		podSpec.Volumes = append(podSpec.Volumes, watchVol)
+		podSpec.Containers = append(podSpec.Containers, corev1.Container{
+			Image:        cfg.SmbdContainerImage,
+			Name:         "dns-reg",
+			Args:         []string{"dns-register", "--watch", watchFile},
+			Env:          podEnv,
+			VolumeMounts: append(mounts, wbSockMount, watchMount),
+		})
+		podSpec.Containers = append(podSpec.Containers, corev1.Container{
+			Image: cfg.SvcWatchContainerImage,
+			Name:  "svc-watch",
+			Env: []corev1.EnvVar{
+				{
+					Name:  "DESTINATION_PATH",
+					Value: watchFile,
+				},
+				{
+					Name:  "SERVICE_LABEL_KEY",
+					Value: svcSelectorKey,
+				},
+				{
+					Name:  "SERVICE_LABEL_VALUE",
+					ValueFrom: &corev1.EnvVarSource{
+						FieldRef: &corev1.ObjectFieldSelector{
+							FieldPath: fmt.Sprintf("metadata.labels['%s']", svcSelectorKey),
+						},
+					},
+				},
+				{
+					Name:  "SERVICE_NAMESPACE",
+					ValueFrom: &corev1.EnvVarSource{
+						FieldRef: &corev1.ObjectFieldSelector{
+							FieldPath: "metadata.namespace",
+						},
+					},
+				},
+			},
+			VolumeMounts: []corev1.VolumeMount{watchMount},
+		})
 	}
 	return podSpec
 }
@@ -267,6 +312,26 @@ func wbSocketsVolumeAndMount(planner *sharePlanner) (
 	mount := corev1.VolumeMount{
 		MountPath: planner.winbindSocketsDir(),
 		Name:      wbSocketsVolName,
+	}
+	return volume, mount
+}
+
+func svcWatchVolumeAndMount(dir string) (
+	corev1.Volume, corev1.VolumeMount) {
+	// volume
+	name := "svcwatch"
+	volume := corev1.Volume{
+		Name: name,
+		VolumeSource: corev1.VolumeSource{
+			EmptyDir: &corev1.EmptyDirVolumeSource{
+				Medium: corev1.StorageMediumMemory,
+			},
+		},
+	}
+	// mount
+	mount := corev1.VolumeMount{
+		MountPath: dir,
+		Name:      name,
 	}
 	return volume, mount
 }
