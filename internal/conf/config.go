@@ -14,6 +14,7 @@ import (
 type OperatorConfig struct {
 	SmbdContainerImage string `mapstructure:"smbd-container-image"`
 	SmbdContainerName  string `mapstructure:"smbd-container-name"`
+	SvcWatchContainerImage string `mapstructure:"svc-watch-container-image"`
 }
 
 // Source is how external configuration sources populate the operator config.
@@ -27,6 +28,7 @@ func NewSource() *Source {
 	v := viper.New()
 	v.SetDefault("smbd-container-image", "quay.io/samba.org/samba-server:latest")
 	v.SetDefault("smbd-container-name", "samba")
+	v.SetDefault("svc-watch-container-image", "quay.io/phlogistonjohn/svcwatch:jjm-sxp")
 	return &Source{v: v}
 }
 
