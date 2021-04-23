@@ -68,5 +68,7 @@ must demo kubectl -n "$ns" apply -f ./sxp-demo/adshare2.yaml
 demo kubectl -n "$ns" get pods -w
 
 
-demo kubectl -n "$ns" exec -it smbclient -- smbclient -U 'DOMAIN1/bwayne%1115Rose.' "//users.$ns.svc.cluster.local/Users"
-demo kubectl -n "$ns" exec -it smbclient -- smbclient -U 'DOMAIN1/bwayne%1115Rose.' "//users.domain1.sink.test/Users"
+must demo kubectl -n "$ns" exec -it smbclient -- smbclient -U 'DOMAIN1/bwayne%1115Rose.' "//users.$ns.svc.cluster.local/Users" -c "ls"
+must demo kubectl -n "$ns" exec -it smbclient -- smbclient -U 'DOMAIN1/bwayne%1115Rose.' "//users.domain1.sink.test/Users" -c "ls"
+
+manual
