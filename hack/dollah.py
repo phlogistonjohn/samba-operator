@@ -31,7 +31,7 @@ def prompt(dest=sys.stdout):
 
 
 def wait():
-    if os.environ.get("DOLLAH_WAIT") == "no":
+    if not DOLLAH_WAIT:
         return
     fd = sys.stdin.fileno()
     before = termios.tcgetattr(fd)
