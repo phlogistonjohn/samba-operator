@@ -1,0 +1,21 @@
+---
+apiVersion: samba-operator.samba.org/v1alpha1
+kind: SmbShare
+metadata:
+  namespace: samba-operator-system
+  name: users
+  annotations:
+    samba-operator.samba.org/demo-service-type: LoadBalancer
+    samba-operator.samba.org/demo-dns-register: "true"
+spec:
+  shareName: "Users"
+  readOnly: false
+  securityConfig: adsecurity
+  storage:
+    pvc:
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 1Gi
