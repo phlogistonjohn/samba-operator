@@ -24,6 +24,10 @@ manual() {
     PS1='[show]$ ' bash --norc
 }
 
+all_done() {
+    PS1='[done]$ ' bash --norc
+}
+
 if [ -z "$IMG" ]; then
     echo "IMG is unset!"
     exit 1
@@ -77,7 +81,21 @@ must demo kubectl -n "$ns" apply -f ./sxp-demo/adshare2.yaml
 demo kubectl -n "$ns" get pods -w
 
 
-must demo kubectl -n "$ns" exec -it smbclient -- smbclient -U 'DOMAIN1/bwayne%1115Rose.' "//users.$ns.svc.cluster.local/Users" -c "ls"
-must demo kubectl -n "$ns" exec -it smbclient -- smbclient -U 'DOMAIN1/bwayne%1115Rose.' "//users.domain1.sink.test/Users" -c "ls"
+if ! kubectl -n "$ns" exec -it smbclient -- smbclient -U 'DOMAIN1/bwayne%1115Rose.' "//users.$ns.svc.cluster.local/Users" -c "ls" >/dev/null ; then
+    err_users=true
+fi
+
+if ! kubectl -n "$ns" exec -it smbclient -- smbclient -U 'DOMAIN1/bwayne%1115Rose.' "//users.domain1.sink.test/Users" -c "ls" >/dev/null ; then
+    err_archive=true
+fi
+
+if [ "$err_users" = "true" -o "$err_archive" = "true" ]; then
+    say "we can dive deeper"
+else
+    say "we can now use the shares - start with smbclient in cluster"
+    demo kubectl -n "$ns" exec -it smbclient -- smbclient -U 'DOMAIN1/bwayne%1115Rose.' "//users.$ns.svc.cluster.local/Users"
+fi
 
 manual
+
+all_done
