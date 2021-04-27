@@ -24,6 +24,15 @@ manual() {
     PS1='[show]$ ' bash --norc
 }
 
+if [ -z "$IMG" ]; then
+    echo "IMG is unset!"
+    exit 1
+fi
+if [ -z "$TAG" ]; then
+    echo "IMG is unset!"
+    exit 1
+fi
+
 ns=samba-operator-system
 
 section "Deploying the operator"
