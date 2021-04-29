@@ -1,11 +1,11 @@
 #!/bin/bash
 
 section() {
-    echo "###" "$@" "###"
+    DOLLAH_COLOR=green DOLLAH_DISPLAY=yes DOLLAH_PROMPT="" ./hack/dollah.py "###" "$@" "###"
 }
 
 say() {
-    demo "echo" "$@"
+    DOLLAH_COLOR=blue DOLLAH_DISPLAY=yes DOLLAH_PROMPT="" ./hack/dollah.py "#" "$@"
 }
 
 demo() {
@@ -36,6 +36,8 @@ if [ -z "$TAG" ]; then
     echo "IMG is unset!"
     exit 1
 fi
+
+export DOLLAH_COLOR=white
 
 ns=samba-operator-system
 
