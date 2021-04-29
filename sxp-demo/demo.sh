@@ -1,10 +1,12 @@
 #!/bin/bash
 
 section() {
+    echo ""
     DOLLAH_COLOR=green DOLLAH_DISPLAY=yes DOLLAH_PROMPT="" ./hack/dollah.py "###" "$@" "###"
 }
 
 say() {
+    echo ""
     DOLLAH_COLOR=blue DOLLAH_DISPLAY=yes DOLLAH_PROMPT="" ./hack/dollah.py "#" "$@"
 }
 
@@ -21,7 +23,9 @@ must() {
 }
 
 manual() {
-    PS1='[show]$ ' bash --norc
+    WHITE="\033[1;37;40m"
+    NORMAL="\033[0;37;40m"
+    PS1="${WHITE}[show]\$${NORMAL} " bash --norc
 }
 
 all_done() {
