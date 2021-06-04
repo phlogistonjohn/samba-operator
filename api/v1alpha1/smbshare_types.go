@@ -86,6 +86,7 @@ type SmbShareStatus struct {
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
+// +genclient
 
 // SmbShare is the Schema for the smbshares API
 type SmbShare struct {

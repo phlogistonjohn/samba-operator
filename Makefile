@@ -93,8 +93,13 @@ vet:
 	go vet ./...
 
 # Generate code
-generate: controller-gen
+generate: generate-controller
+
+generate-controller: controller-gen
 	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
+
+generate-client: client-gen
+	strace -o xxx -f $(CLIENT_GEN) -v 10 --go-header-file fake.txt --input-base "github.com/samba-in-kubernetes/samba-operator/api" --input="v1alpha1" --output-package "./pkg/client" --clientset-name="sambaop_client"
 
 # Build the container image
 docker-build: image-build
@@ -154,6 +159,25 @@ KUSTOMIZE=$(GOBIN)/kustomize
 else
 KUSTOMIZE=$(shell command -v kustomize ;)
 endif
+
+client-gen:
+ifeq (, $(shell command -v client-gen ;))
+	@echo "client-gen not found in PATH, checking in GOBIN ($(GOBIN))..."
+ifeq (, $(shell command -v $(GOBIN)/client-gen ;))
+	{ \
+	set -e ;\
+	CLIENT_GEN_TMP_DIR=$$(mktemp -d) ;\
+	cd $$CLIENT_GEN_TMP_DIR ;\
+	go mod init tmp ;\
+	go get k8s.io/code-generator/cmd/client-gen@v0.21.1 ;\
+	rm -rf $$CLIENT_GEN_TMP_DIR ;\
+	}
+endif
+CLIENT_GEN=$(GOBIN)/client-gen
+else
+CLIENT_GEN=$(shell command -v client-gen ;)
+endif
+
 
 # Generate bundle manifests and metadata, then validate generated files.
 .PHONY: bundle
