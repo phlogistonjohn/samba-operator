@@ -89,5 +89,6 @@ func annotationsForSmbPod(name string) map[string]string {
 	return map[string]string{
 		"kubectl.kubernetes.io/default-logs-container": name,
 		"kubectl.kubernetes.io/default-container":      name,
+		"k8s.v1.cni.cncf.io/networks":                  "hostdev1",
 	}
 }
