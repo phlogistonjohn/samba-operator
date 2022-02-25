@@ -495,6 +495,14 @@ func buildCTDBDaemonCtr(
 				},
 			},
 		},
+		SecurityContext: &corev1.SecurityContext{
+			Capabilities: &corev1.Capabilities{
+				Add: []corev1.Capability{
+					corev1.Capability("NET_ADMIN"),
+					corev1.Capability("NET_RAW"),
+				},
+			},
+		},
 	}
 }
 
