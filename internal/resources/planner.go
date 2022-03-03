@@ -389,6 +389,7 @@ func (*sharePlanner) ctdbDaemonArgs() []string {
 		"--setup=ctdb_config",
 		"--setup=ctdb_etc",
 		"--setup=ctdb_nodes",
+		"--setup=ctdb_public_addresses",
 	}
 }
 
