@@ -58,6 +58,7 @@ type ConfigSection struct {
 	Globals          []Key         `json:"globals,omitempty"`
 	InstanceName     string        `json:"instance_name,omitempty"`
 	InstanceFeatures []FeatureFlag `json:"instance_features,omitempty"`
+	CTDBAddresses    []CTDBAddr    `json:"ctdb_addresses,omitempty"`
 }
 
 // ShareConfig holds configuration values for one share.
@@ -93,6 +94,13 @@ type GroupEntries []GroupEntry
 
 // SmbOptions is a common type for storing smb.conf parameters.
 type SmbOptions map[string]string
+
+// CTDBAddr represents a IP Address that can be paired with an interface
+// by the CTDB subsystem.
+type CTDBAddr struct {
+	Address   string `json:"address"`
+	Interface string `json:"interface"`
+}
 
 const version0 = "v0"
 
