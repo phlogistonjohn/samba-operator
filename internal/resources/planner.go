@@ -43,6 +43,7 @@ const (
 // "cheat codes"
 const (
 	nodeSpreadKey     = "samba-operator.samba.org/node-spread"
+	ctdbAddressesKey  = "samba-operator.samba.org/ctdb-addrs"
 	nodeSpreadDisable = "false"
 )
 
@@ -276,6 +277,7 @@ func (sp *sharePlanner) update() (changed bool, err error) {
 		}
 		if sp.isClustered() {
 			cfg.InstanceFeatures = []smbcc.FeatureFlag{smbcc.CTDB}
+			cfg.CTDBAddresses = sp.ctdbAddresses()
 		}
 		sp.ConfigState.Configs[cfgKey] = cfg
 		changed = true
@@ -462,4 +464,31 @@ func (sp *sharePlanner) clusterSize() int32 {
 // nodes.
 func (sp *sharePlanner) nodeSpread() bool {
 	return sp.SmbShare.Annotations[nodeSpreadKey] != nodeSpreadDisable
+}
+
+// ctdbAddresses returns a slice of address objects that CTDB will
+// use for IP failover.
+func (sp *sharePlanner) ctdbAddresses() []smbcc.CTDBAddr {
+	a := sp.SmbShare.Annotations[ctdbAddressesKey]
+	if a == "" {
+		return nil
+	}
+	topLevel := strings.SplitN(a, ":", 2)
+	if len(topLevel) != 2 {
+		return nil
+	}
+
+	addrs := []smbcc.CTDBAddr{}
+	iface := topLevel[0]
+	for _, astr := range strings.Split(topLevel[1], " ") {
+		if astr == "" {
+			continue
+		}
+		// TODO: validate astr is sane
+		addrs = append(addrs, smbcc.CTDBAddr{
+			Address: astr,
+			Interface: iface,
+		})
+	}
+	return addrs
 }
