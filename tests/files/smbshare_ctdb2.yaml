@@ -5,7 +5,7 @@ metadata:
   name: cshare2
   annotations:
     samba-operator.samba.org/node-spread: "true"
-    samba-operator.samba.org/ctdb-addrs: "net1: 192.168.78.160/24 192.168.78.161/24 192.168.78.162/24"
+    samba-operator.samba.org/ctdb-addrs: "net1: 172.16.8.60/24 172.16.8.61/24 172.16.8.62/24"
 spec:
   shareName: "Three Kingdoms"
   readOnly: false
