@@ -116,7 +116,7 @@ type SmbShareScalingSpec struct {
 	// shares under one (logical) server host.
 	// Valid values are "never" and "explicit".
 	// +optional
-	// +kubebuilder:validation:Enum:=never:explicit
+	// +kubebuilder:validation:Enum:=never;explicit
 	// +kubebuilder:default:=never
 	GroupMode string `json:"groupMode,omitempty"`
 }
