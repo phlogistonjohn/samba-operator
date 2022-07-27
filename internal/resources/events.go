@@ -27,4 +27,7 @@ const (
 	ReasonCreatedPersistentVolumeClaim = "CreatedPersistentVolumeClaim"
 	ReasonCreatedDeployment            = "CreatedDeployment"
 	ReasonCreatedStatefulSet           = "CreatedStatefulSet"
+	// ReasonInvalidConfiguration indicates a failure to proceed due
+	// to an invalid configuration.
+	ReasonInvalidConfiguration = "InvalidConfiguration"
 )

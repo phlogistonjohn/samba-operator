@@ -41,6 +41,11 @@ const (
 	serverBackend    = "samba-operator.samba.org/serverBackend"
 	clusteredBackend = "clustered:ctdb/statefulset"
 	standardBackend  = "standard:deployment"
+
+	// never groupMode disables grouping
+	never = "never"
+	// explicit groupMode enables group with explicit group naming
+	explicit = "explicit"
 )
 
 // SmbShareManager is used to manage SmbShare resources.
@@ -121,8 +126,10 @@ func (m *SmbShareManager) Update(
 		return Requeue
 	}
 
-	// assign the share to a Server Group. Currently we only support 1:1
-	// shares to servers & it simply reflects the name of the resource.
+	// assign the share to a Server Group. The server group represents
+	// the resources needed to create samba servers (possibly a cluster)
+	// and prerequisite resources. The serverGroup name used to name
+	// many (all?) of these resources.
 	changed, err = m.setServerGroup(ctx, instance)
 	if err != nil {
 		return Result{err: err}
@@ -1054,9 +1061,25 @@ func (m *SmbShareManager) setServerGroup(
 		return false, nil
 	}
 
-	// NOTE: currently the ServerGroup is only assigned the exact name of the
-	// resource. In the future this may change if/when multiple SmbShares can
-	// be hosted by one smbd pod.
-	s.Status.ServerGroup = s.ObjectMeta.Name
+	// if the share's scaling.groupMode option allows >1 share per
+	// serverGroup instance, we allow the group name to be supplied
+	// by the scaling.group option.
+	// In other cases it's based on the name of the SmbShare resource.
+	serverGroup := s.ObjectMeta.Name
+	if s.Spec.Scaling != nil && s.Spec.Scaling.Group != "" {
+		if s.Spec.Scaling.GroupMode == never {
+			// we don't support this. it's confusing and not worth
+			// it at this time.
+			msg := "a group name may not be specified when groupMode is 'never'"
+			m.recorder.Event(
+				s,
+				EventWarning,
+				ReasonInvalidConfiguration,
+				msg)
+			return false, fmt.Errorf(msg)
+		}
+		serverGroup = s.Spec.Scaling.Group
+	}
+	s.Status.ServerGroup = serverGroup
 	return true, m.client.Status().Update(ctx, s)
 }
