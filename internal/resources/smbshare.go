@@ -916,6 +916,12 @@ func (m *SmbShareManager) updateConfiguration(
 		m.logger.Error(err, "unable to read samba container config")
 		return nil, false, err
 	}
+	members, err := getGroupMemeberShares(cm)
+	if err != nil {
+		m.logger.Error(err, "unable to read server group member shares")
+		return nil, false, err
+	}
+
 	isDeleting := s.GetDeletionTimestamp() != nil
 	if isDeleting {
 		m.logger.Info(
@@ -934,6 +940,28 @@ func (m *SmbShareManager) updateConfiguration(
 		return nil, false, err
 	}
 
+	present := inMemberShares(s.Name, members)
+	if !present && len(members) > 1 {
+		// this server group will be hosting > 1 share, but we must
+		// first pass our sanity checks
+		other, err := m.getSmbShareByName(ctx, types.NamespacedName{
+			Namespace: s.Namespace,
+			Name:      pickMember(members),
+		})
+		if err != nil {
+			return nil, false, err
+		}
+		otherInstance, err := m.getShareInstance(ctx, other)
+		if err != nil {
+			return nil, false, err
+		}
+		if err = pln.CheckCompatible(shareInstance, otherInstance); err != nil {
+			return nil, false, err
+		}
+	} else if !present {
+		members = append(members, s.Name)
+	}
+
 	// extract config from map
 	var changed bool
 	planner := pln.New(shareInstance, cc)
@@ -946,6 +974,15 @@ func (m *SmbShareManager) updateConfiguration(
 		// nothing changed between the planner and the config stored in the cm
 		// we can just return now as no changes need to be applied to the cm
 		return planner, false, nil
+	}
+	err = setGroupMemberShares(cm, members)
+	if err != nil {
+		m.logger.Error(
+			err,
+			"unable to set member shares in ConfigMap",
+			"ConfigMap.Namespace", cm.Namespace,
+			"ConfigMap.Name", cm.Name)
+		return nil, false, err
 	}
 	err = setContainerConfig(cm, planner.ConfigState)
 	if err != nil {
@@ -1106,4 +1143,19 @@ func (m *SmbShareManager) getShareInstance(
 		GlobalConfig:   m.cfg,
 	}
 	return shareInstance, nil
+}
+
+func inMemberShares(s string, members []string) bool {
+	for i := range members {
+		if members[i] == s {
+			return true
+		}
+	}
+	return false
+}
+
+func pickMember(members []string) string {
+	// placeholder for any future fancy logic selecting a peer
+	// share from the members slice
+	return members[0]
 }
