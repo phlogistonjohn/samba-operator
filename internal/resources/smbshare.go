@@ -928,27 +928,15 @@ func (m *SmbShareManager) updateConfiguration(
 			nil)
 		return planner, false, nil
 	}
-	security, err := m.getSecurityConfig(ctx, s)
+
+	shareInstance, err := m.getShareInstance(ctx, s)
 	if err != nil {
-		m.logger.Error(err, "failed to get SmbSecurityConfig")
-		return nil, false, err
-	}
-	common, err := m.getCommonConfig(ctx, s)
-	if err != nil {
-		m.logger.Error(err, "failed to get SmbCommonConfig")
 		return nil, false, err
 	}
 
 	// extract config from map
 	var changed bool
-	planner := pln.New(
-		pln.InstanceConfiguration{
-			SmbShare:       s,
-			SecurityConfig: security,
-			CommonConfig:   common,
-			GlobalConfig:   m.cfg,
-		},
-		cc)
+	planner := pln.New(shareInstance, cc)
 	changed, err = planner.Update()
 	if err != nil {
 		m.logger.Error(err, "unable to update samba container config")
