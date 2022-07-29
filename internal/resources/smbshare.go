@@ -941,7 +941,7 @@ func (m *SmbShareManager) updateConfiguration(
 	}
 
 	present := inMemberShares(s.Name, members)
-	if !present && len(members) > 1 {
+	if !present && len(members) >= 1 {
 		// this server group will be hosting > 1 share, but we must
 		// first pass our sanity checks
 		other, err := m.getSmbShareByName(ctx, types.NamespacedName{
