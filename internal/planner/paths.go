@@ -32,7 +32,9 @@ func (planner *Planner) Paths() *Paths {
 
 // ShareMountPath returns the mount path.
 func (p *Paths) ShareMountPath() string {
-	return path.Join("/mnt", string(p.planner.SmbShare.UID))
+	// XXX: HACK
+	return "/mnt/data"
+	//return path.Join("/mnt", string(p.planner.SmbShare.UID))
 }
 
 // Share path.
