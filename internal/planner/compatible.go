@@ -39,6 +39,21 @@ func CheckCompatible(current, existing InstanceConfiguration) error {
 	// This returns an error rather than a boolean because in the future
 	// we can choose to add details about what is incompatible to
 	// the specific error type.
+	if current.SmbShare == nil || existing.SmbShare == nil {
+		name1, name2 := "<invalid>", "<invalid>"
+		if current.SmbShare != nil {
+			name1 = current.SmbShare.Name
+		}
+		if existing.SmbShare != nil {
+			name2 = existing.SmbShare.Name
+		}
+		return IncompatibleInstanceError{
+			current: name1,
+			existing: name2,
+			reason: "instance configuration missing SmbShare",
+		}
+	}
+
 	if current.SmbShare.Namespace != existing.SmbShare.Namespace {
 		return incompatible(current, existing, "namespaces differ")
 	}
