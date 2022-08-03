@@ -25,9 +25,12 @@ import (
 	kresource "k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types" // nolint:typecheck
 	"k8s.io/client-go/tools/record"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	rtclient "sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	sambaoperatorv1alpha1 "github.com/samba-in-kubernetes/samba-operator/api/v1alpha1"
@@ -203,6 +206,13 @@ func (m *SmbShareManager) updateConfigMap(
 		m.logger.Info("Created config map")
 		return nil, Requeue
 	}
+	changed, err := m.claimOwnership(ctx, smbshare, cm)
+	if err != nil {
+		return nil, Result{err: err}
+	} else if changed {
+		m.logger.Info("Updated config map ownership")
+		return nil, Requeue
+	}
 	planner, changed, err := m.updateConfiguration(ctx, cm, smbshare)
 	if err != nil {
 		return nil, Result{err: err}
@@ -346,6 +356,14 @@ func (m *SmbShareManager) updateClusteredState(
 		return Requeue
 	}
 
+	changed, err := m.claimOwnership(ctx, planner.SmbShare, statefulSet)
+	if err != nil {
+		return Result{err: err}
+	} else if changed {
+		m.logger.Info("Updated stateful set ownership")
+		return Requeue
+	}
+
 	resized, err := m.updateStatefulSetSize(
 		ctx, statefulSet,
 		int32(planner.SmbShare.Spec.Scaling.MinClusterSize))
@@ -377,6 +395,14 @@ func (m *SmbShareManager) updateNonClusteredState(
 		return Requeue
 	}
 
+	changed, err := m.claimOwnership(ctx, planner.SmbShare, deployment)
+	if err != nil {
+		return Result{err: err}
+	} else if changed {
+		m.logger.Info("Updated deployment ownership")
+		return Requeue
+	}
+
 	resized, err := m.updateDeploymentSize(ctx, deployment)
 	if err != nil {
 		return Result{err: err}
@@ -391,7 +417,7 @@ func (m *SmbShareManager) updateSmbService(
 	ctx context.Context,
 	planner *pln.Planner) Result {
 	// ---
-	_, created, err := m.getOrCreateService(
+	svc, created, err := m.getOrCreateService(
 		ctx, planner, planner.SmbShare.Namespace)
 	if err != nil {
 		return Result{err: err}
@@ -399,9 +425,19 @@ func (m *SmbShareManager) updateSmbService(
 		m.logger.Info("Created service")
 		return Requeue
 	}
+
+	changed, err := m.claimOwnership(ctx, planner.SmbShare, svc)
+	if err != nil {
+		return Result{err: err}
+	} else if changed {
+		m.logger.Info("Updated service ownership")
+		return Requeue
+	}
+
 	return Done
 }
 
+// TODO needs ownership?
 func (m *SmbShareManager) updateMetricsService(
 	ctx context.Context,
 	planner *pln.Planner) Result {
@@ -417,6 +453,7 @@ func (m *SmbShareManager) updateMetricsService(
 	return Done
 }
 
+// TODO needs ownership?
 func (m *SmbShareManager) updateMetricsServiceMonitor(
 	ctx context.Context,
 	planner *pln.Planner) Result {
@@ -1143,6 +1180,37 @@ func (m *SmbShareManager) getShareInstance(
 		GlobalConfig:   m.cfg,
 	}
 	return shareInstance, nil
+}
+
+func (m *SmbShareManager) claimOwnership(
+	ctx context.Context,
+	s *sambaoperatorv1alpha1.SmbShare,
+	obj client.Object) (bool, error) {
+	// ---
+	gvk, err := apiutil.GVKForObject(s, m.scheme)
+	if err != nil {
+		return false, err
+	}
+	refs := obj.GetOwnerReferences()
+	for _, ref := range refs {
+		refgv, err := schema.ParseGroupVersion(ref.APIVersion)
+		if err != nil {
+			return false, err
+		}
+		if gvk.Group == refgv.Group && gvk.Kind == ref.Kind && s.GetName() == ref.Name {
+			// found it!  return false to indicate no changes
+			return false, nil
+		}
+	}
+	oref := metav1.OwnerReference{
+		APIVersion: gvk.GroupVersion().String(),
+		Kind:       gvk.Kind,
+		UID:        s.GetUID(),
+		Name:       s.GetName(),
+	}
+	refs = append(refs, oref)
+	obj.SetOwnerReferences(refs)
+	return true, m.client.Update(ctx, obj)
 }
 
 func inMemberShares(s string, members []string) bool {
