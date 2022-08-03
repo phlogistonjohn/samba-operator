@@ -953,9 +953,9 @@ func (m *SmbShareManager) updateConfiguration(
 		m.logger.Error(err, "unable to read samba container config")
 		return nil, false, err
 	}
-	members, err := getGroupMemeberShares(cm)
+	otherShares, err := ownerSharesExcluding(cm, s)
 	if err != nil {
-		m.logger.Error(err, "unable to read server group member shares")
+		m.logger.Error(err, "unable to get shares owning config map")
 		return nil, false, err
 	}
 
@@ -977,14 +977,10 @@ func (m *SmbShareManager) updateConfiguration(
 		return nil, false, err
 	}
 
-	present := inMemberShares(s.Name, members)
-	if !present && len(members) >= 1 {
+	if len(otherShares) > 0 {
 		// this server group will be hosting > 1 share, but we must
 		// first pass our sanity checks
-		other, err := m.getSmbShareByName(ctx, types.NamespacedName{
-			Namespace: s.Namespace,
-			Name:      pickMember(members),
-		})
+		other, err := m.getSmbShareByName(ctx, otherShares[0])
 		if err != nil {
 			return nil, false, err
 		}
@@ -995,8 +991,6 @@ func (m *SmbShareManager) updateConfiguration(
 		if err = pln.CheckCompatible(shareInstance, otherInstance); err != nil {
 			return nil, false, err
 		}
-	} else if !present {
-		members = append(members, s.Name)
 	}
 
 	// extract config from map
@@ -1011,15 +1005,6 @@ func (m *SmbShareManager) updateConfiguration(
 		// nothing changed between the planner and the config stored in the cm
 		// we can just return now as no changes need to be applied to the cm
 		return planner, false, nil
-	}
-	err = setGroupMemberShares(cm, members)
-	if err != nil {
-		m.logger.Error(
-			err,
-			"unable to set member shares in ConfigMap",
-			"ConfigMap.Namespace", cm.Namespace,
-			"ConfigMap.Name", cm.Name)
-		return nil, false, err
 	}
 	err = setContainerConfig(cm, planner.ConfigState)
 	if err != nil {
@@ -1222,8 +1207,39 @@ func inMemberShares(s string, members []string) bool {
 	return false
 }
 
-func pickMember(members []string) string {
-	// placeholder for any future fancy logic selecting a peer
-	// share from the members slice
-	return members[0]
+func ownerShares(obj metav1.Object) ([]types.NamespacedName, error) {
+	owners := []types.NamespacedName{}
+	ssgvk := sambaoperatorv1alpha1.GroupVersion
+	refs := obj.GetOwnerReferences()
+	for _, ref := range refs {
+		refgv, err := schema.ParseGroupVersion(ref.APIVersion)
+		if err != nil {
+			return nil, err
+		}
+		if refgv.Group == ssgvk.Group && ref.Kind == "SmbShare" {
+			owners = append(owners, types.NamespacedName{
+				Namespace: obj.GetNamespace(),
+				Name: ref.Name,
+			})
+		}
+	}
+	return owners, nil
+}
+
+func ownerSharesExcluding(
+	obj metav1.Object,
+	s *sambaoperatorv1alpha1.SmbShare) ([]types.NamespacedName, error) {
+	// ---
+	owners, err := ownerShares(obj)
+	if err != nil {
+		return nil, err
+	}
+	out := []types.NamespacedName{}
+	for _, nn := range owners {
+		if nn.Namespace == s.Namespace && nn.Name == s.Name {
+			continue
+		}
+		out = append(out, nn)
+	}
+	return out, nil
 }
