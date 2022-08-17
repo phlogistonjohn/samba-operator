@@ -78,29 +78,3 @@ func setContainerConfig(
 	cm.Data[ConfigJSONKey] = string(jb)
 	return nil
 }
-
-func getGroupMemeberShares(
-	cm *corev1.ConfigMap) ([]string, error) {
-	// ---
-	ms, found := cm.Data[MemberSharesJSONKey]
-	if !found {
-		return []string{}, nil
-	}
-	var shares []string
-	if err := json.Unmarshal([]byte(ms), &shares); err != nil {
-		return nil, err
-	}
-	return shares, nil
-}
-
-func setGroupMemberShares(
-	cm *corev1.ConfigMap,
-	members []string) error {
-	// ---
-	msjson, err := json.Marshal(members)
-	if err != nil {
-		return err
-	}
-	cm.Data[MemberSharesJSONKey] = string(msjson)
-	return nil
-}
