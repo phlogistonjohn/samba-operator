@@ -46,8 +46,6 @@ const (
 
 	// never groupMode disables grouping
 	never = "never"
-	// explicit groupMode enables group with explicit group naming
-	explicit = "explicit"
 )
 
 // SmbShareManager is used to manage SmbShare resources.
