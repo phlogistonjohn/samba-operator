@@ -12,8 +12,7 @@ import (
 	sambaoperatorv1alpha1 "github.com/samba-in-kubernetes/samba-operator/api/v1alpha1"
 )
 
-func TestCheckCompatible(t *testing.T) {
-
+func phonyInstanceConfiguration() InstanceConfiguration {
 	ic1 := InstanceConfiguration{
 		SmbShare: &sambaoperatorv1alpha1.SmbShare{
 			ObjectMeta: metav1.ObjectMeta{
@@ -40,34 +39,44 @@ func TestCheckCompatible(t *testing.T) {
 			},
 		},
 	}
+	return ic1
+}
 
-	t.Run("compatible", func(t *testing.T) {
-		ic2 := InstanceConfiguration{
-			SmbShare: &sambaoperatorv1alpha1.SmbShare{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "share2",
-					Namespace: "smbshares",
-					UID:       "phonyuid2",
+func phonyInstanceConfiguration2(ns, security, common, pvcname string) InstanceConfiguration {
+	ic2 := InstanceConfiguration{
+		SmbShare: &sambaoperatorv1alpha1.SmbShare{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "share2",
+				Namespace: ns,
+				UID:       "phonyuid2",
+			},
+			Spec: sambaoperatorv1alpha1.SmbShareSpec{
+				ShareName:      "share2",
+				ReadOnly:       false,
+				Browseable:     false,
+				SecurityConfig: security,
+				CommonConfig:   common,
+				Scaling: &sambaoperatorv1alpha1.SmbShareScalingSpec{
+					GroupMode: "explicit",
+					Group:     "mystuff",
 				},
-				Spec: sambaoperatorv1alpha1.SmbShareSpec{
-					ShareName:      "share2",
-					ReadOnly:       false,
-					Browseable:     false,
-					SecurityConfig: "myusers1",
-					CommonConfig:   "mycommon1",
-					Scaling: &sambaoperatorv1alpha1.SmbShareScalingSpec{
-						GroupMode: "explicit",
-						Group:     "mystuff",
-					},
-					Storage: sambaoperatorv1alpha1.SmbShareStorageSpec{
-						Pvc: &sambaoperatorv1alpha1.SmbSharePvcSpec{
-							Name: "mydata",
-							Path: "share2",
-						},
+				Storage: sambaoperatorv1alpha1.SmbShareStorageSpec{
+					Pvc: &sambaoperatorv1alpha1.SmbSharePvcSpec{
+						Name: pvcname,
+						Path: "share2",
 					},
 				},
 			},
-		}
+		},
+	}
+	return ic2
+}
+
+func TestCheckCompatible(t *testing.T) {
+	ic1 := phonyInstanceConfiguration()
+
+	t.Run("compatible", func(t *testing.T) {
+		ic2 := phonyInstanceConfiguration2("smbshares", "myusers1", "mycommon1", "mydata")
 		assert.NoError(t, CheckCompatible(ic1, ic2))
 	})
 
@@ -100,32 +109,7 @@ func TestCheckCompatible(t *testing.T) {
 	})
 
 	t.Run("differentNamespace", func(t *testing.T) {
-		ic2 := InstanceConfiguration{
-			SmbShare: &sambaoperatorv1alpha1.SmbShare{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "share2",
-					Namespace: "whoopsie",
-					UID:       "phonyuid2",
-				},
-				Spec: sambaoperatorv1alpha1.SmbShareSpec{
-					ShareName:      "share2",
-					ReadOnly:       false,
-					Browseable:     false,
-					SecurityConfig: "myusers1",
-					CommonConfig:   "mycommon1",
-					Scaling: &sambaoperatorv1alpha1.SmbShareScalingSpec{
-						GroupMode: "explicit",
-						Group:     "mystuff",
-					},
-					Storage: sambaoperatorv1alpha1.SmbShareStorageSpec{
-						Pvc: &sambaoperatorv1alpha1.SmbSharePvcSpec{
-							Name: "mydata",
-							Path: "share2",
-						},
-					},
-				},
-			},
-		}
+		ic2 := phonyInstanceConfiguration2("whoopsie", "myusers1", "mycommon1", "mydata")
 		err := CheckCompatible(ic1, ic2)
 		if assert.Error(t, err) {
 			assert.ErrorContains(t, err, "namespaces")
@@ -133,32 +117,7 @@ func TestCheckCompatible(t *testing.T) {
 	})
 
 	t.Run("differentPVC", func(t *testing.T) {
-		ic2 := InstanceConfiguration{
-			SmbShare: &sambaoperatorv1alpha1.SmbShare{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "share2",
-					Namespace: "smbshares",
-					UID:       "phonyuid2",
-				},
-				Spec: sambaoperatorv1alpha1.SmbShareSpec{
-					ShareName:      "share2",
-					ReadOnly:       false,
-					Browseable:     false,
-					SecurityConfig: "myusers1",
-					CommonConfig:   "mycommon1",
-					Scaling: &sambaoperatorv1alpha1.SmbShareScalingSpec{
-						GroupMode: "explicit",
-						Group:     "mystuff",
-					},
-					Storage: sambaoperatorv1alpha1.SmbShareStorageSpec{
-						Pvc: &sambaoperatorv1alpha1.SmbSharePvcSpec{
-							Name: "foobar",
-							Path: "share2",
-						},
-					},
-				},
-			},
-		}
+		ic2 := phonyInstanceConfiguration2("smbshares", "myusers1", "mycommon1", "foobar")
 		err := CheckCompatible(ic1, ic2)
 		if assert.Error(t, err) {
 			assert.ErrorContains(t, err, "PersistentVolumeClaim name")
@@ -166,32 +125,7 @@ func TestCheckCompatible(t *testing.T) {
 	})
 
 	t.Run("differentSecurityConfig", func(t *testing.T) {
-		ic2 := InstanceConfiguration{
-			SmbShare: &sambaoperatorv1alpha1.SmbShare{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "share2",
-					Namespace: "smbshares",
-					UID:       "phonyuid2",
-				},
-				Spec: sambaoperatorv1alpha1.SmbShareSpec{
-					ShareName:      "share2",
-					ReadOnly:       false,
-					Browseable:     false,
-					SecurityConfig: "xxxxxxxxxx",
-					CommonConfig:   "mycommon1",
-					Scaling: &sambaoperatorv1alpha1.SmbShareScalingSpec{
-						GroupMode: "explicit",
-						Group:     "mystuff",
-					},
-					Storage: sambaoperatorv1alpha1.SmbShareStorageSpec{
-						Pvc: &sambaoperatorv1alpha1.SmbSharePvcSpec{
-							Name: "mydata",
-							Path: "share2",
-						},
-					},
-				},
-			},
-		}
+		ic2 := phonyInstanceConfiguration2("smbshares", "xxxxx", "mycommon1", "mydata")
 		err := CheckCompatible(ic1, ic2)
 		if assert.Error(t, err) {
 			assert.ErrorContains(t, err, "security config name")
@@ -199,32 +133,7 @@ func TestCheckCompatible(t *testing.T) {
 	})
 
 	t.Run("differentCommonConfig", func(t *testing.T) {
-		ic2 := InstanceConfiguration{
-			SmbShare: &sambaoperatorv1alpha1.SmbShare{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "share2",
-					Namespace: "smbshares",
-					UID:       "phonyuid2",
-				},
-				Spec: sambaoperatorv1alpha1.SmbShareSpec{
-					ShareName:      "share2",
-					ReadOnly:       false,
-					Browseable:     false,
-					SecurityConfig: "myusers1",
-					CommonConfig:   "zzzzzzz",
-					Scaling: &sambaoperatorv1alpha1.SmbShareScalingSpec{
-						GroupMode: "explicit",
-						Group:     "mystuff",
-					},
-					Storage: sambaoperatorv1alpha1.SmbShareStorageSpec{
-						Pvc: &sambaoperatorv1alpha1.SmbSharePvcSpec{
-							Name: "mydata",
-							Path: "share2",
-						},
-					},
-				},
-			},
-		}
+		ic2 := phonyInstanceConfiguration2("smbshares", "myusers1", "zzzzz", "mydata")
 		err := CheckCompatible(ic1, ic2)
 		if assert.Error(t, err) {
 			assert.ErrorContains(t, err, "common config name")
