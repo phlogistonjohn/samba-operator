@@ -8,12 +8,15 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
+// IncompatibleInstanceError indicates SmbShare resources are not compatible
+// with each other and can not hosted by the same server.
 type IncompatibleInstanceError struct {
 	current  string
 	existing string
-	reason string
+	reason   string
 }
 
+// Error interface method.
 func (iie IncompatibleInstanceError) Error() string {
 	return fmt.Sprintf("Share resource %s is incompatible with %s: %s",
 		iie.current,
@@ -26,9 +29,9 @@ func incompatible(
 	reason string) IncompatibleInstanceError {
 	// ---
 	return IncompatibleInstanceError{
-		current: current.SmbShare.Name,
+		current:  current.SmbShare.Name,
 		existing: existing.SmbShare.Name,
-		reason: reason,
+		reason:   reason,
 	}
 }
 
@@ -48,9 +51,9 @@ func CheckCompatible(current, existing InstanceConfiguration) error {
 			name2 = existing.SmbShare.Name
 		}
 		return IncompatibleInstanceError{
-			current: name1,
+			current:  name1,
 			existing: name2,
-			reason: "instance configuration missing SmbShare",
+			reason:   "instance configuration missing SmbShare",
 		}
 	}
 
