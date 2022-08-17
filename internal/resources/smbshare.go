@@ -1195,15 +1195,6 @@ func (m *SmbShareManager) claimOwnership(
 	return true, m.client.Update(ctx, obj)
 }
 
-func inMemberShares(s string, members []string) bool {
-	for i := range members {
-		if members[i] == s {
-			return true
-		}
-	}
-	return false
-}
-
 func ownerShares(obj metav1.Object) ([]types.NamespacedName, error) {
 	owners := []types.NamespacedName{}
 	ssgvk := sambaoperatorv1alpha1.GroupVersion
