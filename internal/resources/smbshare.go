@@ -1207,7 +1207,7 @@ func ownerShares(obj metav1.Object) ([]types.NamespacedName, error) {
 		if refgv.Group == ssgvk.Group && ref.Kind == "SmbShare" {
 			owners = append(owners, types.NamespacedName{
 				Namespace: obj.GetNamespace(),
-				Name: ref.Name,
+				Name:      ref.Name,
 			})
 		}
 	}
