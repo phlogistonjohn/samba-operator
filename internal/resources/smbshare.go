@@ -28,7 +28,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types" // nolint:typecheck
 	"k8s.io/client-go/tools/record"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	rtclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -1170,7 +1169,7 @@ func (m *SmbShareManager) getShareInstance(
 func (m *SmbShareManager) claimOwnership(
 	ctx context.Context,
 	s *sambaoperatorv1alpha1.SmbShare,
-	obj client.Object) (bool, error) {
+	obj rtclient.Object) (bool, error) {
 	// ---
 	gvk, err := apiutil.GVKForObject(s, m.scheme)
 	if err != nil {
