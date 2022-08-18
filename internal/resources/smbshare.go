@@ -475,6 +475,9 @@ func (m *SmbShareManager) Finalize(
 	destNamespace := instance.Namespace
 	cm, err := m.getConfigMap(ctx, instance, destNamespace)
 	if err == nil {
+		if result := m.transferOwnership(ctx, cm, instance); result.Yield() {
+			return result
+		}
 		// previously, we kept one configmap for many SmbShares but have moved
 		// away from that however, just to be safe, we're retaining the finalizer
 		// and check that the config is OK to remove in the case that we need to
@@ -1193,6 +1196,94 @@ func (m *SmbShareManager) claimOwnership(
 	refs = append(refs, oref)
 	obj.SetOwnerReferences(refs)
 	return true, m.client.Update(ctx, obj)
+}
+
+func (m *SmbShareManager) transferOwnership(
+	ctx context.Context,
+	obj rtclient.Object,
+	previous *sambaoperatorv1alpha1.SmbShare) Result {
+	// ---
+	refs, err := smbShareOwnerRefs(obj)
+	if err != nil {
+		m.logger.Error(err, "Failed to get share owner references")
+		return Result{err: err}
+	}
+	refs = excludeOwnerRefs(refs, previous.GetName(), previous.GetUID())
+	if len(refs) == 0 {
+		m.logger.Info("Object has no other possible owners", "Object", obj)
+		return Done
+	}
+	for _, ref := range refs {
+		if ref.Controller != nil && *ref.Controller {
+			m.logger.Info(
+				"Previous owner is not controller-owner. No transfer needed.",
+				"Object",
+				obj,
+				"controllerOwner.Name",
+				ref.Name,
+			)
+			return Done
+		}
+	}
+
+	// no share in the owner refs is a controlling owner.
+	// find the first valid ref and make it an owner
+	var chosenRef metav1.OwnerReference
+	for _, ref := range refs {
+		name := types.NamespacedName{
+			Namespace: obj.GetNamespace(),
+			Name:      ref.Name,
+		}
+		s, err := m.getSmbShareByName(ctx, name)
+		if err != nil {
+			if errors.IsNotFound(err) {
+				continue
+			}
+			m.logger.Error(
+				err,
+				"Failed to fetch alternative owner",
+				"Object",
+				obj,
+				"OtherOwner.Name",
+				name,
+			)
+			return Result{err: err}
+		}
+		if s.GetDeletionTimestamp() == nil {
+			chosenRef = ref
+			break
+		}
+	}
+
+	if chosenRef.Name == "" {
+		// nothing valid was found.
+		m.logger.Info("No new valid owners found: skipping ownership transfer",
+			"Object",
+			obj,
+		)
+		return Done
+	}
+	m.logger.Info("Chose a new controller-owner share",
+		"Object",
+		obj,
+		"newControllerOwner.Name",
+		chosenRef.Name,
+		"newControllerOwner.UID",
+		chosenRef.UID,
+	)
+	changeControllerOwnerTo(obj, &chosenRef)
+	if err := m.client.Update(ctx, obj); err != nil {
+		m.logger.Error(err, "Failed to update ownership", "Object", obj)
+		return Result{err: err}
+	}
+	m.logger.Info(
+		"Updated controlling ownership",
+		"Object",
+		obj,
+		"NewControllerOwner.Name",
+		chosenRef.Name,
+	)
+	return Requeue
 }
 
 func smbShareOwnerRefs(obj metav1.Object) ([]metav1.OwnerReference, error) {
