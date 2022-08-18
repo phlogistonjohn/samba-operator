@@ -1195,8 +1195,8 @@ func (m *SmbShareManager) claimOwnership(
 	return true, m.client.Update(ctx, obj)
 }
 
-func ownerShares(obj metav1.Object) ([]types.NamespacedName, error) {
-	owners := []types.NamespacedName{}
+func smbShareOwnerRefs(obj metav1.Object) ([]metav1.OwnerReference, error) {
+	found := []metav1.OwnerReference{}
 	ssgvk := sambaoperatorv1alpha1.GroupVersion
 	refs := obj.GetOwnerReferences()
 	for _, ref := range refs {
@@ -1205,29 +1205,55 @@ func ownerShares(obj metav1.Object) ([]types.NamespacedName, error) {
 			return nil, err
 		}
 		if refgv.Group == ssgvk.Group && ref.Kind == "SmbShare" {
-			owners = append(owners, types.NamespacedName{
-				Namespace: obj.GetNamespace(),
-				Name:      ref.Name,
-			})
+			found = append(found, ref)
 		}
 	}
-	return owners, nil
+	return found, nil
+}
+
+func ownerRefsToNames(
+	refs []metav1.OwnerReference, ns string) []types.NamespacedName {
+	// ---
+	owners := []types.NamespacedName{}
+	for _, ref := range refs {
+		owners = append(owners, types.NamespacedName{
+			Namespace: ns,
+			Name:      ref.Name,
+		})
+	}
+	return owners
+}
+
+func excludeOwnerRefs(
+	refs []metav1.OwnerReference,
+	name string,
+	uid types.UID) []metav1.OwnerReference {
+	// ---
+	out := []metav1.OwnerReference{}
+	for _, ref := range refs {
+		if ref.Name != name && ref.UID != uid {
+			out = append(out, ref)
+		}
+	}
+	return out
+}
+
+func ownerShares(obj metav1.Object) ([]types.NamespacedName, error) {
+	refs, err := smbShareOwnerRefs(obj)
+	if err != nil {
+		return nil, err
+	}
+	return ownerRefsToNames(refs, obj.GetNamespace()), nil
 }
 
 func ownerSharesExcluding(
 	obj metav1.Object,
 	s *sambaoperatorv1alpha1.SmbShare) ([]types.NamespacedName, error) {
 	// ---
-	owners, err := ownerShares(obj)
+	refs, err := smbShareOwnerRefs(obj)
 	if err != nil {
 		return nil, err
 	}
-	out := []types.NamespacedName{}
-	for _, nn := range owners {
-		if nn.Namespace == s.Namespace && nn.Name == s.Name {
-			continue
-		}
-		out = append(out, nn)
-	}
-	return out, nil
+	otherRefs := excludeOwnerRefs(refs, s.GetName(), s.GetUID())
+	return ownerRefsToNames(otherRefs, s.GetNamespace()), nil
 }
