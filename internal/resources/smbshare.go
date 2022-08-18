@@ -1238,14 +1238,6 @@ func excludeOwnerRefs(
 	return out
 }
 
-func ownerShares(obj metav1.Object) ([]types.NamespacedName, error) {
-	refs, err := smbShareOwnerRefs(obj)
-	if err != nil {
-		return nil, err
-	}
-	return ownerRefsToNames(refs, obj.GetNamespace()), nil
-}
-
 func ownerSharesExcluding(
 	obj metav1.Object,
 	s *sambaoperatorv1alpha1.SmbShare) ([]types.NamespacedName, error) {
@@ -1256,4 +1248,22 @@ func ownerSharesExcluding(
 	}
 	otherRefs := excludeOwnerRefs(refs, s.GetName(), s.GetUID())
 	return ownerRefsToNames(otherRefs, s.GetNamespace()), nil
+}
+
+func changeControllerOwnerTo(
+	obj metav1.Object,
+	target *metav1.OwnerReference) {
+	// ---
+	refs := obj.GetOwnerReferences()
+	for i := range refs {
+		if refs[i].Name == target.Name && refs[i].UID == target.UID {
+			v := true
+			refs[i].Controller = &v
+			refs[i].BlockOwnerDeletion = &v
+		} else {
+			refs[i].Controller = nil
+			refs[i].BlockOwnerDeletion = nil
+		}
+	}
+	obj.SetOwnerReferences(refs)
 }
