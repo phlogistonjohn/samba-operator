@@ -19,6 +19,8 @@ func smbShareOwnerRefs(obj metav1.Object) ([]metav1.OwnerReference, error) {
 		if err != nil {
 			return nil, err
 		}
+		// we intentionally don't check the version as it can change
+		// but the resource would still be "our" SmbShare
 		if refgv.Group == ssgvk.Group && ref.Kind == "SmbShare" {
 			found = append(found, ref)
 		}
