@@ -8,6 +8,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	sambaoperatorv1alpha1 "github.com/samba-in-kubernetes/samba-operator/api/v1alpha1"
 )
 
 var (
@@ -128,4 +130,35 @@ func TestExcludeOwnerRefs(t *testing.T) {
 
 	refs = excludeOwnerRefs(cm.GetOwnerReferences(), "foobar", "pretendapplezebra")
 	assert.Len(t, refs, 1)
+}
+
+func TestOwnerSharesExcluding(t *testing.T) {
+	cm := sampleConfigMap()
+
+	t.Run("match", func(t *testing.T) {
+		s := &sambaoperatorv1alpha1.SmbShare{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "foobar",
+				Namespace: "spacename",
+				UID:       "pretendapplezebra",
+			},
+		}
+		names, err := ownerSharesExcluding(cm, s)
+		assert.NoError(t, err)
+		assert.Len(t, names, 1)
+		assert.Equal(t, names[0].Name, "bazbaz")
+	})
+
+	t.Run("noMatch", func(t *testing.T) {
+		s := &sambaoperatorv1alpha1.SmbShare{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "foobar",
+				Namespace: "spacename",
+				UID:       "zzzz",
+			},
+		}
+		names, err := ownerSharesExcluding(cm, s)
+		assert.NoError(t, err)
+		assert.Len(t, names, 2)
+	})
 }
