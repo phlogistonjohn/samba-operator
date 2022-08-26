@@ -48,7 +48,7 @@ func excludeOwnerRefs(
 	// ---
 	out := []metav1.OwnerReference{}
 	for _, ref := range refs {
-		if ref.Name != name && ref.UID != uid {
+		if ref.Name != name || ref.UID != uid {
 			out = append(out, ref)
 		}
 	}
