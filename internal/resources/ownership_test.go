@@ -162,3 +162,47 @@ func TestOwnerSharesExcluding(t *testing.T) {
 		assert.Len(t, names, 2)
 	})
 }
+
+func TestChangeControllerOwnerTo(t *testing.T) {
+	cm := sampleConfigMap()
+	assert.Len(t, cm.OwnerReferences, 2)
+	assert.Equal(t, cm.OwnerReferences[0].Name, "foobar")
+	if assert.NotNil(t, cm.OwnerReferences[0].Controller) {
+		assert.True(t, *cm.OwnerReferences[0].Controller)
+	}
+	assert.Equal(t, cm.OwnerReferences[1].Name, "bazbaz")
+	assert.Nil(t, cm.OwnerReferences[1].Controller)
+
+	// no change
+	changeControllerOwnerTo(
+		cm, &metav1.OwnerReference{Name: "foobar", UID: "pretendapplezebra"})
+	assert.Len(t, cm.OwnerReferences, 2)
+	assert.Equal(t, cm.OwnerReferences[0].Name, "foobar")
+	if assert.NotNil(t, cm.OwnerReferences[0].Controller) {
+		assert.True(t, *cm.OwnerReferences[0].Controller)
+	}
+	assert.Equal(t, cm.OwnerReferences[1].Name, "bazbaz")
+	assert.Nil(t, cm.OwnerReferences[1].Controller)
+
+	// change
+	changeControllerOwnerTo(
+		cm, &metav1.OwnerReference{Name: "bazbaz", UID: "pretendalanzork"})
+	assert.Len(t, cm.OwnerReferences, 2)
+	assert.Equal(t, cm.OwnerReferences[0].Name, "foobar")
+	assert.Nil(t, cm.OwnerReferences[0].Controller)
+	assert.Equal(t, cm.OwnerReferences[1].Name, "bazbaz")
+	if assert.NotNil(t, cm.OwnerReferences[1].Controller) {
+		assert.True(t, *cm.OwnerReferences[1].Controller)
+	}
+
+	// change back
+	changeControllerOwnerTo(
+		cm, &metav1.OwnerReference{Name: "foobar", UID: "pretendapplezebra"})
+	assert.Len(t, cm.OwnerReferences, 2)
+	assert.Equal(t, cm.OwnerReferences[0].Name, "foobar")
+	if assert.NotNil(t, cm.OwnerReferences[0].Controller) {
+		assert.True(t, *cm.OwnerReferences[0].Controller)
+	}
+	assert.Equal(t, cm.OwnerReferences[1].Name, "bazbaz")
+	assert.Nil(t, cm.OwnerReferences[1].Controller)
+}
