@@ -15,36 +15,79 @@ import (
 )
 
 func TestUpdate(t *testing.T) {
-	t.Run("simpleUpdate", testSimpleUpdate)
-	t.Run("secondShare", testSecondShare)
+	t.Run("simpleUpdate", func(t *testing.T) {
+		testSimpleUpdate(t, smbcc.New())
+	})
+	t.Run("secondShare", func(t *testing.T) {
+		testSecondShare(t, smbcc.New())
+	})
 }
 
-func testSimpleUpdate(t *testing.T) {
-	state := smbcc.New()
-	assert.Len(t, state.Shares, 0)
-	assert.Len(t, state.Globals, 0)
+func TestPrune(t *testing.T) {
+	t.Run("addTwoPruneOne", func(t *testing.T) {
+		testAddTwoPruneOne(t, smbcc.New())
+	})
+	t.Run("addTwoPruneTwo", func(t *testing.T) {
+		testAddTwoPruneTwo(t, smbcc.New())
+	})
+	t.Run("addTwoPruneSame", func(t *testing.T) {
+		testAddTwoPruneSame(t, smbcc.New())
+	})
+}
 
-	p := New(InstanceConfiguration{
-		SmbShare: &sambaoperatorv1alpha1.SmbShare{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "share1",
-				Namespace: "smbshares",
-				UID:       "phonyuid1",
-			},
-			Spec: sambaoperatorv1alpha1.SmbShareSpec{
-				ShareName:      "share1",
-				ReadOnly:       false,
-				Browseable:     true,
-				SecurityConfig: "",
-				CommonConfig:   "",
-				Storage: sambaoperatorv1alpha1.SmbShareStorageSpec{
-					Pvc: &sambaoperatorv1alpha1.SmbSharePvcSpec{
-						Name: "mydata",
-						Path: "share1",
-					},
+func sampleSmbShare1() *sambaoperatorv1alpha1.SmbShare {
+	return &sambaoperatorv1alpha1.SmbShare{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "share1",
+			Namespace: "smbshares",
+			UID:       "phonyuid1",
+		},
+		Spec: sambaoperatorv1alpha1.SmbShareSpec{
+			ShareName:      "share1",
+			ReadOnly:       false,
+			Browseable:     true,
+			SecurityConfig: "",
+			CommonConfig:   "",
+			Storage: sambaoperatorv1alpha1.SmbShareStorageSpec{
+				Pvc: &sambaoperatorv1alpha1.SmbSharePvcSpec{
+					Name: "mydata",
+					Path: "share1",
 				},
 			},
 		},
+	}
+}
+
+func sampleSmbShare2() *sambaoperatorv1alpha1.SmbShare {
+	return &sambaoperatorv1alpha1.SmbShare{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "share2",
+			Namespace: "smbshares",
+			UID:       "phonyuid2",
+		},
+		Spec: sambaoperatorv1alpha1.SmbShareSpec{
+			ShareName:      "share2",
+			ReadOnly:       false,
+			Browseable:     true,
+			SecurityConfig: "",
+			CommonConfig:   "",
+			Storage: sambaoperatorv1alpha1.SmbShareStorageSpec{
+				Pvc: &sambaoperatorv1alpha1.SmbSharePvcSpec{
+					Name: "mydata",
+					Path: "share2",
+				},
+			},
+		},
+	}
+}
+
+func testSimpleUpdate(t *testing.T, state *smbcc.SambaContainerConfig) {
+	assert.Len(t, state.Shares, 0)
+	assert.Len(t, state.Configs, 0)
+	assert.Len(t, state.Globals, 0)
+
+	p := New(InstanceConfiguration{
+		SmbShare:     sampleSmbShare1(),
 		GlobalConfig: &conf.OperatorConfig{},
 	}, state)
 
@@ -59,36 +102,18 @@ func testSimpleUpdate(t *testing.T) {
 	assert.False(t, changed)
 
 	assert.Len(t, state.Shares, 1)
+	assert.Len(t, state.Configs, 1)
 	assert.Len(t, state.Globals, 1)
 	assert.Contains(t, state.Shares, smbcc.Key("share1"))
 }
 
-func testSecondShare(t *testing.T) {
-	state := smbcc.New()
+func testSecondShare(t *testing.T, state *smbcc.SambaContainerConfig) {
 	assert.Len(t, state.Shares, 0)
+	assert.Len(t, state.Configs, 0)
 	assert.Len(t, state.Globals, 0)
 
 	p := New(InstanceConfiguration{
-		SmbShare: &sambaoperatorv1alpha1.SmbShare{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "share1",
-				Namespace: "smbshares",
-				UID:       "phonyuid1",
-			},
-			Spec: sambaoperatorv1alpha1.SmbShareSpec{
-				ShareName:      "share1",
-				ReadOnly:       false,
-				Browseable:     true,
-				SecurityConfig: "",
-				CommonConfig:   "",
-				Storage: sambaoperatorv1alpha1.SmbShareStorageSpec{
-					Pvc: &sambaoperatorv1alpha1.SmbSharePvcSpec{
-						Name: "mydata",
-						Path: "share1",
-					},
-				},
-			},
-		},
+		SmbShare:     sampleSmbShare1(),
 		GlobalConfig: &conf.OperatorConfig{},
 	}, state)
 
@@ -98,26 +123,7 @@ func testSecondShare(t *testing.T) {
 	assert.True(t, changed)
 
 	p2 := New(InstanceConfiguration{
-		SmbShare: &sambaoperatorv1alpha1.SmbShare{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "share2",
-				Namespace: "smbshares",
-				UID:       "phonyuid2",
-			},
-			Spec: sambaoperatorv1alpha1.SmbShareSpec{
-				ShareName:      "share2",
-				ReadOnly:       false,
-				Browseable:     true,
-				SecurityConfig: "",
-				CommonConfig:   "",
-				Storage: sambaoperatorv1alpha1.SmbShareStorageSpec{
-					Pvc: &sambaoperatorv1alpha1.SmbSharePvcSpec{
-						Name: "mydata",
-						Path: "share2",
-					},
-				},
-			},
-		},
+		SmbShare:     sampleSmbShare2(),
 		GlobalConfig: &conf.OperatorConfig{},
 	}, state)
 	changed, err = p2.Update()
@@ -125,7 +131,64 @@ func testSecondShare(t *testing.T) {
 	assert.True(t, changed)
 
 	assert.Len(t, state.Shares, 2)
+	assert.Len(t, state.Configs, 1)
 	assert.Len(t, state.Globals, 1)
 	assert.Contains(t, state.Shares, smbcc.Key("share1"))
 	assert.Contains(t, state.Shares, smbcc.Key("share2"))
+	assert.Contains(t, state.Configs[p.instanceID()].Shares, smbcc.Key("share1"))
+	assert.Contains(t, state.Configs[p.instanceID()].Shares, smbcc.Key("share2"))
+}
+
+func testAddTwoPruneOne(t *testing.T, state *smbcc.SambaContainerConfig) {
+	testSecondShare(t, state)
+
+	p := New(InstanceConfiguration{
+		SmbShare:     sampleSmbShare1(),
+		GlobalConfig: &conf.OperatorConfig{},
+	}, state)
+	changed, err := p.Prune()
+	assert.NoError(t, err)
+	assert.True(t, changed)
+
+	assert.Len(t, state.Shares, 1)
+	assert.Len(t, state.Configs, 1)
+	assert.Len(t, state.Globals, 1)
+	assert.NotContains(t, state.Configs[p.instanceID()].Shares, smbcc.Key("share1"))
+	assert.Contains(t, state.Configs[p.instanceID()].Shares, smbcc.Key("share2"))
+}
+
+func testAddTwoPruneTwo(t *testing.T, state *smbcc.SambaContainerConfig) {
+	testAddTwoPruneOne(t, state)
+
+	p := New(InstanceConfiguration{
+		SmbShare:     sampleSmbShare2(),
+		GlobalConfig: &conf.OperatorConfig{},
+	}, state)
+	changed, err := p.Prune()
+	assert.NoError(t, err)
+	assert.True(t, changed)
+
+	assert.Len(t, state.Shares, 0)
+	assert.Len(t, state.Configs, 1)
+	assert.Len(t, state.Globals, 1)
+	assert.NotContains(t, state.Configs[p.instanceID()].Shares, smbcc.Key("share1"))
+	assert.NotContains(t, state.Configs[p.instanceID()].Shares, smbcc.Key("share2"))
+}
+
+func testAddTwoPruneSame(t *testing.T, state *smbcc.SambaContainerConfig) {
+	testAddTwoPruneOne(t, state)
+
+	p := New(InstanceConfiguration{
+		SmbShare:     sampleSmbShare1(),
+		GlobalConfig: &conf.OperatorConfig{},
+	}, state)
+	changed, err := p.Prune()
+	assert.NoError(t, err)
+	assert.False(t, changed)
+
+	assert.Len(t, state.Shares, 1)
+	assert.Len(t, state.Configs, 1)
+	assert.Len(t, state.Globals, 1)
+	assert.NotContains(t, state.Configs[p.instanceID()].Shares, smbcc.Key("share1"))
+	assert.Contains(t, state.Configs[p.instanceID()].Shares, smbcc.Key("share2"))
 }
