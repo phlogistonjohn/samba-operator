@@ -147,6 +147,24 @@ func (pl *Planner) Update() (changed bool, err error) {
 	return
 }
 
+// Prune the target share from the configuration.
+func (pl *Planner) Prune() (changed bool, err error) {
+	cfgKey := pl.instanceID()
+	shareKey := smbcc.Key(pl.shareName())
+
+	if cfg, found := pl.ConfigState.Configs[cfgKey]; found {
+		if removeShare(&cfg, shareKey) {
+			pl.ConfigState.Configs[cfgKey] = cfg
+			changed = true
+		}
+	}
+	if _, found := pl.ConfigState.Shares[shareKey]; found {
+		delete(pl.ConfigState.Shares, shareKey)
+		changed = true
+	}
+	return
+}
+
 func applyShareValues(share smbcc.ShareConfig, spec api.SmbShareSpec) bool {
 	changed := false
 
@@ -180,4 +198,19 @@ func hasShare(cfg smbcc.ConfigSection, k smbcc.Key) bool {
 		}
 	}
 	return false
+}
+
+func removeShare(cfg *smbcc.ConfigSection, k smbcc.Key) bool {
+	idx := -1
+	for i := range cfg.Shares {
+		if cfg.Shares[i] == k {
+			idx = i
+			break
+		}
+	}
+	if idx == -1 {
+		return false
+	}
+	cfg.Shares = append(cfg.Shares[:idx], cfg.Shares[idx+1:]...)
+	return true
 }
