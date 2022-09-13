@@ -106,7 +106,6 @@ func (m *SmbShareManager) Process(
 }
 
 // Update should be called when a SmbShare resource changes.
-// nolint:funlen
 func (m *SmbShareManager) Update(
 	ctx context.Context,
 	instance *sambaoperatorv1alpha1.SmbShare) Result {
