@@ -830,6 +830,7 @@ func (m *SmbShareManager) claimOwnership(
 	return true, m.client.Update(ctx, obj)
 }
 
+// transferOwnership away from the specified SmbShare.
 func (m *SmbShareManager) transferOwnership(
 	ctx context.Context,
 	obj rtclient.Object,
